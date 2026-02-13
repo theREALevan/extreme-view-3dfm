@@ -1,0 +1,17 @@
+# Outputs
+eval_out/
+*.npy
+!data/**/*.npy
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*~

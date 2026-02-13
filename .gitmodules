@@ -1,0 +1,9 @@
+[submodule "models/pi3"]
+	path = models/pi3
+	url = https://github.com/yyfz/Pi3.git
+[submodule "models/vggt"]
+	path = models/vggt
+	url = https://github.com/facebookresearch/vggt.git
+[submodule "models/worldmirror"]
+	path = models/worldmirror
+	url = https://github.com/Tencent-Hunyuan/HunyuanWorld-Mirror.git
