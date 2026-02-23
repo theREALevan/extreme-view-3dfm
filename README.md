@@ -29,10 +29,8 @@
 | Component | Evaluation | Training |
 |:----------|:----------:|:--------:|
 | **VGGT** | ✅ Released |  Coming soon |
-| **π³** |  Coming soon |  Coming soon |
+| **π³** | ✅ Released |  Coming soon |
 | **World-Mirror** |  Coming soon |  Coming soon |
-
-> **Note:** Only VGGT evaluation is available in this release. The scripts below are for VGGT only.
 
 ---
 
@@ -47,12 +45,15 @@
    cd extreme-view-3dfm
    ```
 
-2. **Install dependencies** following the [VGGT Quick Start](https://github.com/facebookresearch/vggt?tab=readme-ov-file#quick-start) guide.
+2. **Install dependencies:** Go into the corresponding model folder under `models/` and follow that repo’s setup.  
+   - **VGGT:** `models/vggt` — see [VGGT Quick Start](https://github.com/facebookresearch/vggt?tab=readme-ov-file#quick-start).  
+   - **π³ (Pi3):** `models/pi3` — see [Pi3 Quick Start](https://github.com/yyfz/Pi3?tab=readme-ov-file#-quick-start).
 
 ### Run evaluation
 
 1. In `scripts/eval.sh`, set `BASE_DIR` to your **MegaUnScene** data root.
-2. Run:
+2. Set `MODEL` to `vggt` or `pi3`. Set `NO_CKPT=1` to use the pre-trained model only; otherwise the fine-tuned checkpoint is used.
+3. Run:
 
    ```bash
    ./scripts/eval.sh

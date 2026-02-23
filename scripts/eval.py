@@ -2,12 +2,15 @@
 import argparse
 import builtins
 import os
+import shutil
 import sys
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "models" / "vggt"))
+sys.path.insert(0, str(REPO_ROOT / "models" / "pi3"))
 
 import numpy as np
 import torch
@@ -15,6 +18,9 @@ from tqdm import tqdm
 
 from vggt.models.vggt import VGGT
 from vggt.utils.load_fn import load_and_preprocess_images
+from vggt.utils.pose_enc import pose_encoding_to_extri_intri
+from pi3.models.pi3 import Pi3
+from pi3.utils.basic import load_images_as_tensor as pi3_load_images
 
 
 @contextmanager
@@ -29,7 +35,6 @@ def _suppress_shape_warning():
         yield
     finally:
         builtins.print = _print
-from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 
 DATASET_CHOICES = {
     "unscene-t": "data/pairwise/UnScenePairs-t.npy",
@@ -62,7 +67,7 @@ def quat_to_rot(qw, qx, qy, qz):
     return torch.stack([row0, row1, row2], dim=1)
 
 
-def evaluate_pair(model, img1_path, img2_path, gt_R1, gt_R2, device, dtype):
+def evaluate_pair_vggt(model, img1_path, img2_path, gt_R1, gt_R2, device, dtype):
     with _suppress_shape_warning():
         images = load_and_preprocess_images([img1_path, img2_path]).to(device)
     with torch.no_grad():
@@ -78,11 +83,31 @@ def evaluate_pair(model, img1_path, img2_path, gt_R1, gt_R2, device, dtype):
     return rot_err
 
 
+def evaluate_pair_pi3(model, img1_path, img2_path, gt_R1, gt_R2, device, dtype, load_images_as_tensor):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_img1 = os.path.join(temp_dir, "000.jpg")
+        temp_img2 = os.path.join(temp_dir, "001.jpg")
+        shutil.copy2(img1_path, temp_img1)
+        shutil.copy2(img2_path, temp_img2)
+        images = load_images_as_tensor(temp_dir, interval=1).to(device)
+    with torch.no_grad():
+        with torch.cuda.amp.autocast(dtype=dtype):
+            results = model(images[None])
+    camera_poses = results["camera_poses"]
+    pred_R1 = camera_poses[0, 0, :3, :3].transpose(0, 1)
+    pred_R2 = camera_poses[0, 1, :3, :3].transpose(0, 1)
+    pred_rel_R = pred_R2 @ pred_R1.T
+    gt_rel_R = gt_R2 @ gt_R1.T
+    rot_err = geodesic_angle_deg(pred_rel_R.unsqueeze(0), gt_rel_R.unsqueeze(0)).item()
+    return rot_err
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", choices=list(DATASET_CHOICES), required=True)
     parser.add_argument("--base_dir", type=str, required=True)
     parser.add_argument("--ckpt", type=str, default="")
+    parser.add_argument("--model", choices=("vggt", "pi3"), default="vggt")
     parser.add_argument("--out", type=str, required=True)
     args = parser.parse_args()
 
@@ -92,14 +117,26 @@ def main():
     base_dir = Path(args.base_dir)
     os.makedirs(args.out, exist_ok=True)
 
-    model = VGGT.from_pretrained("facebook/VGGT-1B").to(device)
-    if args.ckpt:
-        ckpt_path = REPO_ROOT / args.ckpt
-        ckpt = torch.load(ckpt_path, map_location=device)
-        state = ckpt.get("bias_state_dict", ckpt.get("model"))
-        if state is not None:
-            state = {k.replace("module.", ""): v for k, v in state.items()}
-            model.load_state_dict(state, strict=False)
+    if args.model == "vggt":
+        model = VGGT.from_pretrained("facebook/VGGT-1B").to(device)
+        if args.ckpt:
+            ckpt_path = REPO_ROOT / args.ckpt
+            ckpt = torch.load(ckpt_path, map_location=device)
+            state = ckpt.get("bias_state_dict", ckpt.get("model"))
+            if state is not None:
+                state = {k.replace("module.", ""): v for k, v in state.items()}
+                model.load_state_dict(state, strict=False)
+        evaluate_pair_fn = lambda m, i1, i2, r1, r2: evaluate_pair_vggt(m, i1, i2, r1, r2, device, dtype)
+    else:
+        model = Pi3.from_pretrained("yyfz233/Pi3").to(device)
+        if args.ckpt:
+            ckpt_path = REPO_ROOT / args.ckpt
+            ckpt = torch.load(ckpt_path, map_location=device)
+            state = ckpt.get("bias_state_dict", ckpt.get("model"))
+            if state is not None:
+                state = {k.replace("module.", ""): v for k, v in state.items()}
+                model.load_state_dict(state, strict=False)
+        evaluate_pair_fn = lambda m, i1, i2, r1, r2: evaluate_pair_pi3(m, i1, i2, r1, r2, device, dtype, pi3_load_images)
     model.eval()
 
     test_data = np.load(data_path, allow_pickle=True).item()
@@ -114,7 +151,7 @@ def main():
         q2 = torch.tensor([[p["img2"]["qw"], p["img2"]["qx"], p["img2"]["qy"], p["img2"]["qz"]]], device=device)
         gt_R1 = quat_to_rot(q1[:, 0], q1[:, 1], q1[:, 2], q1[:, 3]).squeeze(0)
         gt_R2 = quat_to_rot(q2[:, 0], q2[:, 1], q2[:, 2], q2[:, 3]).squeeze(0)
-        rot_err = evaluate_pair(model, str(img1_path), str(img2_path), gt_R1, gt_R2, device, dtype)
+        rot_err = evaluate_pair_fn(model, str(img1_path), str(img2_path), gt_R1, gt_R2)
         rot_by_overlap[overlap].append(rot_err)
 
     results = {}
@@ -132,7 +169,7 @@ def main():
     stem = args.data
     txt_path = Path(args.out) / f"eval_{stem}.txt"
     with open(txt_path, "w") as f:
-        f.write(f"data={data_path}\nckpt={args.ckpt or 'base'}\nbase_dir={base_dir}\n\n")
+        f.write(f"model={args.model}\ndata={data_path}\nckpt={args.ckpt or 'base'}\nbase_dir={base_dir}\n\n")
         f.write(f"{'Overlap':10} {'MGE':>8} {'RRA15':>8} {'RRA30':>8}\n")
         for ov in ["large", "small", "none"]:
             if ov in results:
