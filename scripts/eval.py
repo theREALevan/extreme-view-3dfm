@@ -11,16 +11,22 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "models" / "vggt"))
 sys.path.insert(0, str(REPO_ROOT / "models" / "pi3"))
+sys.path.insert(0, str(REPO_ROOT / "models" / "worldmirror"))
 
 import numpy as np
 import torch
 from tqdm import tqdm
+from PIL import Image
+from torchvision import transforms
 
 from vggt.models.vggt import VGGT
 from vggt.utils.load_fn import load_and_preprocess_images
 from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 from pi3.models.pi3 import Pi3
 from pi3.utils.basic import load_images_as_tensor as pi3_load_images
+from src.models.models.worldmirror import WorldMirror
+
+_to_tensor = transforms.ToTensor()
 
 
 @contextmanager
@@ -102,12 +108,41 @@ def evaluate_pair_pi3(model, img1_path, img2_path, gt_R1, gt_R2, device, dtype, 
     return rot_err
 
 
+def load_image_pair_wm(path1, path2):
+    """Load a pair of images for WM: [2, 3, H, W], width 518, H multiple of 14."""
+    img1 = Image.open(path1).convert("RGB")
+    img2 = Image.open(path2).convert("RGB")
+    W_orig, H_orig = img1.size
+    TARGET_W = 518
+    aspect_ratio = H_orig / W_orig if W_orig > 0 else 1
+    m = round(TARGET_W * aspect_ratio / 14)
+    TARGET_H = max(14, m * 14)
+    t1 = _to_tensor(img1.resize((TARGET_W, TARGET_H), Image.Resampling.LANCZOS))
+    t2 = _to_tensor(img2.resize((TARGET_W, TARGET_H), Image.Resampling.LANCZOS))
+    return torch.stack([t1, t2], dim=0)
+
+
+def evaluate_pair_wm(model, img1_path, img2_path, gt_R1, gt_R2, device, dtype):
+    images = load_image_pair_wm(img1_path, img2_path).unsqueeze(0).to(device)
+    views = {"img": images}
+    cond_flags = [0, 0, 0]
+    with torch.no_grad():
+        predictions = model(views=views, cond_flags=cond_flags)
+    camera_poses = predictions["camera_poses"]
+    pred_R1 = camera_poses[0, 0, :3, :3].transpose(0, 1)
+    pred_R2 = camera_poses[0, 1, :3, :3].transpose(0, 1)
+    pred_rel_R = pred_R2 @ pred_R1.T
+    gt_rel_R = gt_R2 @ gt_R1.T
+    rot_err = geodesic_angle_deg(pred_rel_R.unsqueeze(0), gt_rel_R.unsqueeze(0)).item()
+    return rot_err
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", choices=list(DATASET_CHOICES), required=True)
     parser.add_argument("--base_dir", type=str, required=True)
     parser.add_argument("--ckpt", type=str, default="")
-    parser.add_argument("--model", choices=("vggt", "pi3"), default="vggt")
+    parser.add_argument("--model", choices=("vggt", "pi3", "wm"), default="vggt")
     parser.add_argument("--out", type=str, required=True)
     args = parser.parse_args()
 
@@ -127,7 +162,7 @@ def main():
                 state = {k.replace("module.", ""): v for k, v in state.items()}
                 model.load_state_dict(state, strict=False)
         evaluate_pair_fn = lambda m, i1, i2, r1, r2: evaluate_pair_vggt(m, i1, i2, r1, r2, device, dtype)
-    else:
+    elif args.model == "pi3":
         model = Pi3.from_pretrained("yyfz233/Pi3").to(device)
         if args.ckpt:
             ckpt_path = REPO_ROOT / args.ckpt
@@ -137,6 +172,18 @@ def main():
                 state = {k.replace("module.", ""): v for k, v in state.items()}
                 model.load_state_dict(state, strict=False)
         evaluate_pair_fn = lambda m, i1, i2, r1, r2: evaluate_pair_pi3(m, i1, i2, r1, r2, device, dtype, pi3_load_images)
+    else:
+        model = WorldMirror.from_pretrained("tencent/HunyuanWorld-Mirror").to(device)
+        if hasattr(model, "enable_cond"):
+            model.enable_cond = False
+        if args.ckpt:
+            ckpt_path = REPO_ROOT / args.ckpt
+            ckpt = torch.load(ckpt_path, map_location=device)
+            state = ckpt.get("bias_state_dict", ckpt.get("model"))
+            if state is not None:
+                state = {k.replace("module.", ""): v for k, v in state.items()}
+                model.load_state_dict(state, strict=False)
+        evaluate_pair_fn = lambda m, i1, i2, r1, r2: evaluate_pair_wm(m, i1, i2, r1, r2, device, dtype)
     model.eval()
 
     test_data = np.load(data_path, allow_pickle=True).item()

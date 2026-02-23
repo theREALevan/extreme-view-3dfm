@@ -30,7 +30,7 @@
 |:----------|:----------:|:--------:|
 | **VGGT** | ✅ Released |  Coming soon |
 | **π³** | ✅ Released |  Coming soon |
-| **World-Mirror** |  Coming soon |  Coming soon |
+| **World-Mirror (WM)** | ✅ Released |  Coming soon |
 
 ---
 
@@ -47,12 +47,13 @@
 
 2. **Install dependencies:** Go into the corresponding model folder under `models/` and follow that repo’s setup.  
    - **VGGT:** `models/vggt` — see [VGGT Quick Start](https://github.com/facebookresearch/vggt?tab=readme-ov-file#quick-start).  
-   - **π³ (Pi3):** `models/pi3` — see [Pi3 Quick Start](https://github.com/yyfz/Pi3?tab=readme-ov-file#-quick-start).
+   - **π³ (Pi3):** `models/pi3` — see [Pi3 Quick Start](https://github.com/yyfz/Pi3?tab=readme-ov-file#-quick-start).  
+   - **World-Mirror (WM):** `models/worldmirror` — see [Dependencies and Installation](https://github.com/Tencent-Hunyuan/HunyuanWorld-Mirror#%EF%B8%8F-dependencies-and-installation).
 
 ### Run evaluation
 
 1. In `scripts/eval.sh`, set `BASE_DIR` to your **MegaUnScene** data root.
-2. Set `MODEL` to `vggt` or `pi3`. Set `NO_CKPT=1` to use the pre-trained model only; otherwise the fine-tuned checkpoint is used.
+2. Set `MODEL` to `vggt`, `pi3`, or `wm`. Set `NO_CKPT=1` to use the pre-trained model only; otherwise the fine-tuned checkpoint is used.
 3. Run:
 
    ```bash
