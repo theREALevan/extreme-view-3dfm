@@ -1,7 +1,11 @@
 <div align="center">
 <h1>Emergent Extreme-View Geometry <br> in 3D Foundation Models</h1>
 
-<a href="https://arxiv.org/abs/2511.22686"><img src="https://img.shields.io/badge/arXiv-2511.22686-b31b1b" alt="arXiv"></a> &nbsp; <a href="https://cornell-vailab.github.io/Ext-3DFMs/"><img src="https://img.shields.io/badge/Project_Page-green" alt="Project Page"></a> &nbsp; <a href="https://huggingface.co/"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-blue" alt="Hugging Face"></a>
+<a href="https://arxiv.org/abs/2511.22686"><img src="https://img.shields.io/badge/arXiv-2511.22686-b31b1b" alt="arXiv"></a> &nbsp;
+<a href="https://cornell-vailab.github.io/Ext-3DFMs/"><img src="https://img.shields.io/badge/Project_Page-green" alt="Project Page"></a> &nbsp;
+<a href="https://github.com/theREALevan/extreme-view-3dfm"><img src="https://img.shields.io/badge/Main_Code-black?logo=github" alt="Main Code Repository"></a> &nbsp;
+<a href="https://github.com/jot-jt/extreme-view-3dfm-gen-eval"><img src="https://img.shields.io/badge/Generalization_Evaluations-black?logo=github" alt="Generalization Eval Repository"></a> &nbsp;
+<a href="https://huggingface.co/datasets/cornell-vailab/megaunscene"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-blue" alt="Hugging Face"></a>
 
 <p align="center"><em>CVPR 2026</em></p>
 
@@ -34,7 +38,7 @@
 
 ---
 
-## Evaluation
+## Extreme Relative Rotation Estimation Evaluation
 
 ### Setup
 
@@ -59,6 +63,12 @@
    ```bash
    ./scripts/eval.sh
    ```
+
+## Generalization Evaluations
+For evaluations on monocular depth, multiview pose estimation, and dense reconstruction (including on UnSceneRecon), please refer to the [generalization evaluation GitHub repo](https://github.com/jot-jt/extreme-view-3dfm-gen-eval).
+
+## MegaUnScene Dataset
+For MegaUnScene information and download instructions, please refer to the [HuggingFace dataset page](https://huggingface.co/datasets/cornell-vailab/megaunscene).
 
 ---
 
