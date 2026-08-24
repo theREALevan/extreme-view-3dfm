@@ -1,5 +1,6 @@
 # Outputs
 eval_out/
+train_out/
 *.npy
 !data/**/*.npy
 

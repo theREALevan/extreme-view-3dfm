@@ -32,9 +32,9 @@
 
 | Component | Evaluation | Training |
 |:----------|:----------:|:--------:|
-| **VGGT** | ✅ Released |  Coming soon |
-| **π³** | ✅ Released |  Coming soon |
-| **World-Mirror (WM)** | ✅ Released |  Coming soon |
+| **VGGT** | ✅ Released | ✅ Released |
+| **π³** | ✅ Released | ✅ Released |
+| **World-Mirror (WM)** | ✅ Released | ✅ Released |
 
 ---
 
@@ -63,6 +63,24 @@
    ```bash
    ./scripts/eval.sh
    ```
+
+## Training
+
+Bias-only fine-tuning: only the `attn.qkv`, `attn.proj`, `mlp.fc1` and `mlp.fc2` biases of a few
+transformer blocks are updated (74K–83K parameters), supervised with the geodesic rotation loss.
+
+1. In `scripts/train.sh`, set `TRAIN_NPY` to your training pairs npy and `BASE_DIR` to the image
+   root (leave `BASE_DIR` empty if the npy already stores absolute paths).
+2. Set `MODEL` to `vggt`, `pi3`, or `wm`, and `GPUS` to the number of GPUs.
+3. Run:
+
+   ```bash
+   ./scripts/train.sh
+   ```
+
+Each epoch writes a checkpoint that `scripts/eval.py` loads directly. Defaults reproduce the
+released checkpoints: 2 epochs, batch size 1 per GPU, lr 5e-5, and the layers used in the paper
+(`4,11,17,23` for VGGT and WM, `8,24,26-32` for π³); override with `--layers`.
 
 ## Generalization Evaluations
 For evaluations on monocular depth, multiview pose estimation, and dense reconstruction (including on UnSceneRecon), please refer to the [generalization evaluation GitHub repo](https://github.com/jot-jt/extreme-view-3dfm-gen-eval).
