@@ -69,6 +69,28 @@
 Bias-only fine-tuning: only the `attn.qkv`, `attn.proj`, `mlp.fc1` and `mlp.fc2` biases of a few
 transformer blocks are updated (74K–83K parameters), supervised with the geodesic rotation loss.
 
+### Training pairs
+
+Training pairs are not shipped with this repo — build them from the
+[MegaScenes](https://megascenes.github.io/) COLMAP reconstructions. `TRAIN_NPY` is a `.npy` holding
+a dict of same-scene image pairs; only the paths and the world-to-camera quaternions (COLMAP
+`QW QX QY QZ`) are read:
+
+```python
+{
+    0: {
+        "img1": {"path": "...", "qw": ..., "qx": ..., "qy": ..., "qz": ...},
+        "img2": {"path": "...", "qw": ..., "qx": ..., "qy": ..., "qz": ...},
+    },
+    1: {...},
+}
+```
+
+The paper trains on 64,584 pairs, balanced across the three overlap classes (21,528 each), labelled
+with the same large/small/none protocol used for MegaUnScene.
+
+### Run training
+
 1. In `scripts/train.sh`, set `TRAIN_NPY` to your training pairs npy and `BASE_DIR` to the image
    root (leave `BASE_DIR` empty if the npy already stores absolute paths).
 2. Set `MODEL` to `vggt`, `pi3`, or `wm`, and `GPUS` to the number of GPUs.

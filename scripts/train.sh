@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TRAIN_NPY="" # Training pairs npy (MegaScenes)
+TRAIN_NPY="" # Training pairs npy built from MegaScenes (see README)
 BASE_DIR="" # Image root; leave empty if TRAIN_NPY stores absolute paths
 MODEL="vggt" # Model: vggt | pi3 | wm
 GPUS=4

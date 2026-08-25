@@ -131,7 +131,8 @@ def rotation_loss(R_pred, R1_gt, R2_gt, anchor):
 
 
 class PairDataset(Dataset):
-    """Image pairs stored as a dict of {img1, img2, overlap_amount, ...} entries."""
+    """Image pairs stored as a dict of {img1, img2} entries; each image carries a path and a
+    world-to-camera quaternion (qw, qx, qy, qz). See the README for how to build one."""
 
     def __init__(self, npy_file, base_dir=""):
         self.data = np.load(npy_file, allow_pickle=True).item()
